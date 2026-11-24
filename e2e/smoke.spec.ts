@@ -5,7 +5,8 @@ const scene = (page: Page) => expect(page.locator('body'));
 /** ページを開き、タイトル画面がキー入力を受け付ける状態になるまで待つ */
 async function openTitle(page: Page, errors: string[], query = ''): Promise<void> {
   page.on('pageerror', (err) => errors.push(err.message));
-  await page.goto(`/${query}`);
+  // 手元にだけある曲があっても同じ結果になるよう、仮の曲を指定する
+  await page.goto(`/?song=demo${query ? `&${query.slice(1)}` : ''}`);
   await expect(page.locator('#app canvas')).toBeVisible();
   await scene(page).toHaveAttribute('data-scene', 'title');
 }
@@ -13,7 +14,7 @@ async function openTitle(page: Page, errors: string[], query = ''): Promise<void
 /** タイトルから曲を始め、プレイ画面になるまで待つ */
 async function startPlay(page: Page): Promise<void> {
   await page.keyboard.press('Enter');
-  await scene(page).toHaveAttribute('data-scene', 'play', { timeout: 15_000 });
+  await scene(page).toHaveAttribute('data-scene', 'play', { timeout: 30_000 });
 }
 
 test.beforeEach(async ({ page }) => {

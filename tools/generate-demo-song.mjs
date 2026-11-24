@@ -283,10 +283,6 @@ const song = {
   charts,
 };
 writeFileSync(join(OUT_DIR, 'song.json'), JSON.stringify(song, null, 2) + '\n');
-writeFileSync(
-  join(OUT_DIR, '..', 'index.json'),
-  JSON.stringify({ version: 1, songs: ['demo'] }, null, 2) + '\n',
-);
 
 console.log(
   `demo song: ${DURATION.toFixed(1)}s, charts: ${charts.map((c) => c.lanes + 'K').join(' ')}`,

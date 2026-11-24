@@ -170,6 +170,8 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 
 ### 4.1 曲一覧 `public/songs/index.json`
 
+`public/songs/` の下で `song.json` を持つフォルダから、`tools/build-song-index.mjs` が自動で作る（`npm run songs`）。手で編集しない。
+
 ```json
 {
   "version": 1,
@@ -191,12 +193,16 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
   "preview": { "startSec": 45.0, "durationSec": 15.0 },
   "jacket": "jacket.webp",
   "theme": { "background": "#0b1020", "accent": "#66b3ff" },
+  "local": true,
+  "autoChart": true,
   "charts": [{ "difficulty": "normal", "level": 5, "lanes": 4, "file": "normal.4k.json" }]
 }
 ```
 
 - `audioOffsetMs`：音源の形式ごとの先頭のずれ（FR-54）。正の値で、譜面を後ろにずらす。
 - `theme`：Phase 5 の前に項目を確定する。
+- `local`：公開しない、手元での開発・テスト専用の曲（C-02）。配信物に含めない。
+- `autoChart`：譜面が取り込みツールで自動生成した仮のもの。
 
 - 音源の形式は、ブラウザが再生できるものを Opus → AAC → WAV の順に選ぶ（`pickAudioFormat`）。開発用の仮の曲（11 章）は WAV だけを持つ。
 
@@ -402,4 +408,35 @@ Phase 2 の時点では、リザルトに「平均のずれ」と「判定オフ
 - 出力先：`public/songs/demo/` と `public/songs/index.json`。Git には含めず、`npm run dev` / `build` / `test` の前に自動で生成する
 - 乱数の種を固定しているので、何度生成しても同じ内容になる
 
-自作曲を追加するときは、曲一覧（4.1）の扱いを Phase 3 で見直す（生成した `index.json` と、手で管理する曲の一覧を分ける）。
+## 12. 曲の取り込み（実装済み：`tools/import-song.mjs`）
+
+```sh
+npm run song:import -- <音源ファイル> --id <曲ID> [--local] [--bpm 数値] [--first-beat-ms 数値] [--charts-only]
+```
+
+ffmpeg が必要（環境変数 `FFMPEG` でパスを指定することもできる）。
+
+### 12.1 処理の流れ
+
+1. ffmpeg で Opus（160kbps）と AAC（192kbps）に変換する。MP3 の先頭に入るエンコーダーの無音は、ffmpeg が LAME ヘッダーを読んで取り除く
+2. モノラル・22050Hz にデコードし、スペクトルの変化量（1024 サンプルの窓、128 サンプルずつ）から音の立ち上がりの強さを求める（全体と、60Hz〜10kHz を対数で8等分した帯域ごと）
+3. 自己相関で大まかな BPM を求め、その周りを 0.01 刻みで調べて、拍の位置の強さが最大になる BPM と1拍目の位置を選ぶ。整数・0.5 刻みに近ければそちらを採用する
+4. 16拍ごとに拍の位置のずれを調べ、テンポが一定かを確かめる（最大 8ms 以内なら一定とみなす）
+5. 4〜7 レーンの仮の譜面を作る（12.3）
+6. 曲情報と解析結果（`analysis.json`）を書き、曲一覧を作り直す
+
+### 12.2 解析の精度
+
+- 立ち上がりの強さは、実際の音より早く出る。立ち上がりの鋭い音（クリック・キック・プラック）で測ると −33〜−39ms でほぼ一定だったので、36ms を補正値とした（`ONSET_LAG_SEC`）。補正後のずれは 3ms 以内
+- ゆっくり立ち上がる音（パッド）では、補正後も −26ms 程度ずれる。拍の基準になるのはドラムなどの鋭い音なので、実用上の問題はない
+- Chromium で、ffmpeg でデコードした音を基準に Opus・AAC のずれを測ると、どちらも 0ms（1ms 単位）だった。`audioOffsetMs` は 0 とする。Safari・Firefox は Phase 6 で確認する
+
+### 12.3 仮の譜面の作り方（`tools/lib/autochart.mjs`）
+
+1. 16分音符のグリッドごとに立ち上がりの強さを測り、前後16拍の強さで割って曲の中の音量差をならす
+2. 拍の頭（重み 1.0）＞ 8分の裏（0.85）＞ 16分（0.55）の順に優先し、目標のノーツ数（1秒あたり 4K 3.2・5K 3.6・6K 4.0・7K 4.4）だけ強い順に選ぶ
+3. 帯域ごとにふだんの大きさで割ってから、最も強かった帯域のレーンを選ぶ（低音が左、高音が右）。最近よく使ったレーンと直前のレーンは選びにくくし、偏りを防ぐ。同じレーンは 16分より詰めない
+4. 拍の頭の強い音で、次のノーツまで1拍以上あくものはロングノーツにする（全体の約5%まで）
+5. 特に強い拍の頭（上位3%）は、左右対称の位置と同時押しにする
+
+正式な譜面は、譜面エディタ（Phase 3）で作る。

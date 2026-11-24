@@ -16,6 +16,8 @@ export interface Settings {
   /** 表示のオフセット（ミリ秒）。−300〜+300 */
   readonly visualOffsetMs: number;
   readonly lastLanes: LaneMode;
+  /** 最後に選んだ曲の ID */
+  readonly lastSongId: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +26,7 @@ export const DEFAULT_SETTINGS: Settings = {
   judgeOffsetMs: 0,
   visualOffsetMs: 0,
   lastLanes: 4,
+  lastSongId: '',
 };
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
@@ -41,6 +44,7 @@ export function normalizeSettings(raw: unknown): Settings {
     judgeOffsetMs: Math.round(clamp(num(o.judgeOffsetMs, 0), -300, 300)),
     visualOffsetMs: Math.round(clamp(num(o.visualOffsetMs, 0), -300, 300)),
     lastLanes: isLaneMode(lanes) ? lanes : DEFAULT_SETTINGS.lastLanes,
+    lastSongId: typeof o.lastSongId === 'string' ? o.lastSongId : DEFAULT_SETTINGS.lastSongId,
   };
 }
 

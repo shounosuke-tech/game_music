@@ -7,20 +7,21 @@
     "node": ">=24"
   },
   "scripts": {
-    "predev": "npm run songs:demo",
+    "predev": "npm run songs",
     "dev": "vite",
-    "prebuild": "npm run songs:demo",
+    "prebuild": "npm run songs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "pretest": "npm run songs:demo",
+    "pretest": "npm run songs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "songs:demo": "node tools/generate-demo-song.mjs"
+    "songs": "node tools/generate-demo-song.mjs && node tools/build-song-index.mjs",
+    "song:import": "node tools/import-song.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.23.0"

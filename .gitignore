@@ -9,6 +9,9 @@ test-results/
 .env.*
 !.env.example
 
-# 開発用に自動生成する仮の曲（tools/generate-demo-song.mjs）
-public/songs/demo/
-public/songs/index.json
+# 曲データは既定で Git に含めない（権利の確認が済んだ公開用の曲だけ、
+# 「!public/songs/<曲ID>/」の行を足して含める）。仮の曲と曲一覧は自動生成する
+public/songs/*
+
+# 楽曲の元ファイル（権利の扱いが決まるまで Git に含めない）
+music/

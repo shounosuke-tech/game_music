@@ -8,6 +8,7 @@
 ## 必要なもの
 
 - Node.js 26（`.nvmrc` 参照。24 以上なら動作します）
+- ffmpeg（曲を取り込むときだけ必要。Windows なら `winget install Gyan.FFmpeg`）
 
 ## 使い方
 
@@ -50,6 +51,20 @@ npm run dev        # 開発サーバーを起動（http://localhost:5173）
 | 7        | S D F Space J K L |
 
 Esc で一時停止します（再開・最初から・タイトルへ）。曲が終わると、リザルトに「平均のずれ」と「判定オフセットの目安」が出るので、タイトル画面で判定オフセットを合わせてください。
+
+## 曲の取り込み
+
+```sh
+npm run song:import -- "music/曲.mp3" --id my-song --local
+```
+
+音源を Opus と AAC に変換し、BPM と1拍目の位置を推定して、4〜7 レーンの仮の譜面を `public/songs/<曲ID>/` に作ります。結果は `analysis.json` に残ります。
+
+- `--local`：公開しない、手元での開発・テスト専用の曲にする
+- `--bpm` / `--first-beat-ms`：推定がずれているときに手で指定する
+- `--charts-only`：音源の変換を飛ばして、譜面だけを作り直す
+
+**曲データ（`public/songs/`）と元の音源（`music/`）は、既定で Git に含めません。** 公開リポジトリに権利のない音源が載らないようにするためです。公開してよい自作曲だけ、`.gitignore` に `!public/songs/<曲ID>/` を足して含めてください。
 
 ## ディレクトリ構成
 

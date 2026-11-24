@@ -18,9 +18,12 @@ async function bootstrap(): Promise<void> {
   document.getElementById('app')?.appendChild(app.canvas);
 
   let settings = loadSettings();
-  // URL の ?lanes=7 などで初期のレーン数を指定できる（テスト・デバッグ用）
-  const lanesParam = Number(new URLSearchParams(location.search).get('lanes'));
+  // URL の ?lanes=7 や ?song=demo で、最初のレーン数と曲を指定できる（テスト・デバッグ用）
+  const params = new URLSearchParams(location.search);
+  const lanesParam = Number(params.get('lanes'));
   if (isLaneMode(lanesParam)) settings = { ...settings, lastLanes: lanesParam };
+  const songParam = params.get('song');
+  if (songParam) settings = { ...settings, lastSongId: songParam };
 
   let current: Scene | null = null;
 

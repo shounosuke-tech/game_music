@@ -5,6 +5,10 @@ import type { AudioEngine } from '@/platform/audio/AudioEngine';
 /** 曲情報（詳細設計書 4.2）。Phase 2 で使う項目だけ */
 export interface SongInfo {
   readonly id: string;
+  /** 公開しない、手元での開発・テスト専用の曲 */
+  readonly local?: boolean;
+  /** 譜面が自動生成の仮のもの */
+  readonly autoChart?: boolean;
   readonly title: string;
   readonly artist: string;
   readonly audio: Readonly<Record<string, string>>;
@@ -47,6 +51,17 @@ async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`読み込めませんでした（${res.status}）: ${url}`);
   return res.json();
+}
+
+/** 曲一覧と、それぞれの曲情報を読み込む */
+export async function loadSongList(): Promise<SongInfo[]> {
+  const index = (await fetchJson(`${songsBase()}index.json`)) as { songs: string[] };
+  return Promise.all(
+    index.songs.map(
+      async (id) =>
+        (await fetchJson(`${songsBase()}${encodeURIComponent(id)}/song.json`)) as SongInfo,
+    ),
+  );
 }
 
 /** 曲情報・譜面・音源をまとめて読み込む */
