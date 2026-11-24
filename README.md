@@ -25,6 +25,17 @@ npm run dev        # 開発サーバーを起動（http://localhost:5173）
 | `npm test`         | 単体テスト（Vitest）                                                   |
 | `npm run test:e2e` | ブラウザテスト（Playwright。初回は `npx playwright install chromium`） |
 
+## 操作方法（現在はタイミング確認用のデモ）
+
+タイトル画面で数字キー 4〜7 を押してレーン数を選び、Enter キーかクリックでスタートします。URL に `?lanes=6` のように付けて、最初のレーン数を指定することもできます。
+
+| レーン数 | キー配置          |
+| -------- | ----------------- |
+| 4        | D F J K           |
+| 5        | D F Space J K     |
+| 6        | S D F J K L       |
+| 7        | S D F Space J K L |
+
 ## ディレクトリ構成
 
 ```

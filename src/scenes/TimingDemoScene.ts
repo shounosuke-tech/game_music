@@ -1,7 +1,14 @@
 import { Container, Graphics, Text } from 'pixi.js';
 import type { AudioEngine } from '@/audio/AudioEngine';
 import { Metronome } from '@/audio/Metronome';
-import { LANE_KEYS, keyLabel } from '@/config/lanes';
+import {
+  keyLabel,
+  laneIndexOf,
+  laneKeys,
+  laneKind,
+  type LaneKind,
+  type LaneMode,
+} from '@/config/lanes';
 import { beatToSeconds, noteY, performanceToAudioTime, toSongTime } from '@/core/clock';
 import { isMissedByTime, judge, type Judgment } from '@/core/judge';
 
@@ -18,6 +25,13 @@ const JUDGMENT_COLOR: Record<Judgment, number> = {
   miss: 0xff6b6b,
 };
 
+/** レーンの種類ごとのノーツの色 */
+const NOTE_COLOR: Record<LaneKind, number> = {
+  outer: 0xf5f7fa,
+  inner: 0x66b3ff,
+  center: 0xffb347,
+};
+
 interface DemoNote {
   readonly beat: number;
   readonly lane: number;
@@ -28,11 +42,11 @@ interface DemoNote {
 
 /**
  * Phase 1 の動作確認用シーン。
- * メトロノームの拍ごとにノーツを流し、D F J K で叩くと判定を表示する。
+ * メトロノームの拍ごとにノーツを流し、レーン数（4〜7）に応じたキーで叩くと判定を表示する。
  * 描画と判定はすべて音声の時計から計算している（土台の正しさの確認用）。
  */
 export class TimingDemoScene extends Container {
-  private readonly keys = LANE_KEYS[4];
+  private readonly keys: readonly string[];
   private readonly lanes = new Graphics();
   private readonly lanePress = new Graphics();
   private readonly notesLayer = new Container();
@@ -42,20 +56,9 @@ export class TimingDemoScene extends Container {
   });
   private readonly infoText = new Text({
     text: '',
-    style: { fill: 0x9aa4b2, fontSize: 14, fontFamily: 'ui-monospace, monospace' },
+    style: { fill: 0x9aa4b2, fontSize: 14, fontFamily: 'Consolas, Menlo, monospace' },
   });
-  private readonly keyTexts = this.keys.map(
-    (code) =>
-      new Text({
-        text: keyLabel(code),
-        style: {
-          fill: 0x9aa4b2,
-          fontSize: 20,
-          fontWeight: '600',
-          fontFamily: 'system-ui, sans-serif',
-        },
-      }),
-  );
+  private readonly keyTexts: Text[];
   private readonly notes: DemoNote[] = [];
   private readonly pressed = new Set<number>();
   private readonly metronome: Metronome;
@@ -64,8 +67,24 @@ export class TimingDemoScene extends Container {
   private viewWidth = 0;
   private viewHeight = 0;
 
-  constructor(private readonly engine: AudioEngine) {
+  constructor(
+    private readonly engine: AudioEngine,
+    private readonly mode: LaneMode,
+  ) {
     super();
+    this.keys = laneKeys(mode);
+    this.keyTexts = this.keys.map(
+      (code) =>
+        new Text({
+          text: keyLabel(code),
+          style: {
+            fill: 0x9aa4b2,
+            fontSize: code === 'Space' ? 15 : 20,
+            fontWeight: '600',
+            fontFamily: 'system-ui, sans-serif',
+          },
+        }),
+    );
     this.songStart = engine.now + LEAD_IN;
     this.metronome = new Metronome(engine, BPM, this.songStart);
     this.judgmentText.anchor.set(0.5);
@@ -132,7 +151,7 @@ export class TimingDemoScene extends Container {
       if (!note.sprite) {
         note.sprite = new Graphics()
           .roundRect(4, -NOTE_HEIGHT / 2, LANE_WIDTH - 8, NOTE_HEIGHT, 6)
-          .fill({ color: note.lane === 1 || note.lane === 2 ? 0x66b3ff : 0xf5f7fa });
+          .fill({ color: NOTE_COLOR[laneKind(this.mode, note.lane)] });
         note.sprite.x = this.laneLeft + note.lane * LANE_WIDTH;
         this.notesLayer.addChild(note.sprite);
       }
@@ -144,12 +163,14 @@ export class TimingDemoScene extends Container {
     }
 
     this.drawPressedLanes();
-    this.infoText.text = `BPM ${BPM}  song ${songTime.toFixed(3)}s  audio ${this.engine.now.toFixed(3)}s`;
+    this.infoText.text = `${this.mode}K  BPM ${BPM}  song ${songTime.toFixed(3)}s  audio ${this.engine.now.toFixed(3)}s`;
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
-    const lane = this.keys.indexOf(e.code as (typeof this.keys)[number]);
-    if (lane < 0 || e.repeat) return;
+    const lane = laneIndexOf(this.mode, e.code);
+    if (lane < 0) return;
+    e.preventDefault(); // Space でのページスクロールなどを止める
+    if (e.repeat) return;
     this.pressed.add(lane);
 
     // 入力イベントの発生時刻を音声の時刻 → 曲の時刻へ変換して判定する
@@ -165,7 +186,7 @@ export class TimingDemoScene extends Container {
   };
 
   private readonly onKeyUp = (e: KeyboardEvent): void => {
-    const lane = this.keys.indexOf(e.code as (typeof this.keys)[number]);
+    const lane = laneIndexOf(this.mode, e.code);
     if (lane >= 0) this.pressed.delete(lane);
   };
 
