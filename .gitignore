@@ -8,3 +8,7 @@ test-results/
 .env
 .env.*
 !.env.example
+
+# 開発用に自動生成する仮の曲（tools/generate-demo-song.mjs）
+public/songs/demo/
+public/songs/index.json

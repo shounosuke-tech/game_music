@@ -49,7 +49,7 @@
 | `toSongTime(audioTime, songStart, offset)`        | 音声時刻を曲時刻に変換する                         |
 | `noteY(noteTime, songTime, judgeLineY, pxPerSec)` | ノーツの Y 座標                                    |
 
-### 3.2 timing（新規：`core/timing.ts`）
+### 3.2 timing（実装済み：`core/timing.ts`）
 
 BPM と拍子の変化を含めて、tick と曲時刻を変換する。
 
@@ -74,15 +74,15 @@ export function createTimingMap(bpmEvents: readonly BpmEvent[]): TimingMap;
 - **条件：** `bpmEvents` は tick の昇順で、先頭は tick 0。BPM は 0 より大きい。満たさないときは例外を投げる。
 - 拍子（`MeterEvent { tick, numerator, denominator }`）は小節線の表示とエディタのグリッドにだけ使い、時刻の計算には関係しない。
 
-### 3.3 judge（一部実装済み：`core/judge.ts`）
+### 3.3 judge（実装済み：`core/judge.ts`）
 
 | 関数                                          | 内容                                                       |
 | --------------------------------------------- | ---------------------------------------------------------- |
 | `judge(delta, windows)`                       | ずれから判定を返す。Good の幅より早ければ `null`（空打ち） |
 | `isMissedByTime(noteTime, songTime, windows)` | 叩かれないまま Good の幅を過ぎたか                         |
-| `judgeRelease(delta, windows)`（新規）        | ロングノーツの終点の判定。下記 6.3                         |
+| `judgeRelease(delta, windows)`                | ロングノーツの終点の判定。下記 6.3                         |
 
-### 3.4 score（新規：`core/score.ts`）
+### 3.4 score（実装済み：`core/score.ts`）
 
 **スコア（初期案）：** 満点 1,000,000 点。判定オブジェクトの総数を N として、
 
@@ -130,7 +130,7 @@ export function scoreValue(state: ScoreState, totalObjects: number): number;
 
 `applyJudgment` は新しい状態を返す純粋関数にする（テストしやすく、リプレイ機能にも流用できる）。プレイ中の GC を避ける必要が出たら、同じ関数の中身を書き換え型に変える。
 
-### 3.5 chart（新規：`core/chart/`）
+### 3.5 chart（実装済み：`core/chart/`）
 
 譜面ファイル（4.3）を読み込み、ゲームで使う形に変換する。
 
@@ -197,6 +197,8 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 
 - `audioOffsetMs`：音源の形式ごとの先頭のずれ（FR-54）。正の値で、譜面を後ろにずらす。
 - `theme`：Phase 5 の前に項目を確定する。
+
+- 音源の形式は、ブラウザが再生できるものを Opus → AAC → WAV の順に選ぶ（`pickAudioFormat`）。開発用の仮の曲（11 章）は WAV だけを持つ。
 
 ### 4.3 譜面 `public/songs/<曲ID>/<難易度>.<レーン数>k.json`
 
@@ -272,24 +274,24 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 
 ## 5. platform モジュール
 
-### 5.1 AudioEngine（一部実装済み：`src/audio/AudioEngine.ts`）
+### 5.1 AudioEngine（実装済み：`platform/audio/AudioEngine.ts`）
 
-| メソッド                        | 内容                                                                                |
-| ------------------------------- | ----------------------------------------------------------------------------------- |
-| `resume()`                      | ユーザー操作の中で呼び、音声を有効にする                                            |
-| `now`                           | 音声時刻                                                                            |
-| `outputTimestamp()`             | 音声時刻と `performance.now()` の対応                                               |
-| `load(url)`（新規）             | 音源を取得し、`decodeAudioData` でデコードしておく                                  |
-| `playSong(buffer, at)`（新規）  | 音声時刻 `at` に曲を再生する。曲の開始時刻を返す                                    |
-| `stopSong()`（新規）            | 曲を止める                                                                          |
-| `pause()` / `unpause()`（新規） | `AudioContext.suspend()` / `resume()`。音声時刻ごと止まるので、曲時刻も自然に止まる |
-| `playEffect(name, at)`（新規）  | 効果音を予約再生する                                                                |
+| メソッド                          | 内容                                                                                |
+| --------------------------------- | ----------------------------------------------------------------------------------- |
+| `resume()`                        | ユーザー操作の中で呼び、音声を有効にする                                            |
+| `now`                             | 音声時刻                                                                            |
+| `outputTimestamp()`               | 音声時刻と `performance.now()` の対応                                               |
+| `load(url)`                       | 音源を取得し、`decodeAudioData` でデコードしておく                                  |
+| `playSong(buffer, at)`            | 音声時刻 `at` に曲を再生する。曲の開始時刻を返す                                    |
+| `stopSong()`                      | 曲を止める                                                                          |
+| `pause()` / `unpause()`           | `AudioContext.suspend()` / `resume()`。音声時刻ごと止まるので、曲時刻も自然に止まる |
+| `playEffect(name, at)`（Phase 5） | 効果音を予約再生する                                                                |
 
 音量は「曲」「効果音」それぞれの `GainNode` を、まとめ用の `GainNode` につなぐ。
 
-再生の開始は「今 + 0.5 秒」とし、その間に最初の描画を済ませる。
+再生の開始は「今 + 1.5 秒」とし、その間に最初の描画を済ませ、プレイヤーが構えられるようにする。
 
-### 5.2 入力（新規：`platform/input/KeyboardInput.ts`）
+### 5.2 入力（実装済み：`platform/input/KeyboardInput.ts`）
 
 - `keydown` / `keyup` を `window` で受け取る。
 - `event.code` を現在のキー配置でレーン番号に変換する。対象外のキーは無視する。
@@ -298,7 +300,7 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 - `event.timeStamp` を音声時刻 → 曲時刻に変換し、`{ lane, songTime, type: 'down' | 'up' }` をゲームに渡す。
 - ウィンドウからフォーカスが外れたら（`blur`）、押しているキーをすべて離したことにする（ロングノーツが押されっぱなしになるのを防ぐ）。
 
-## 6. game モジュール：プレイの進行（新規）
+## 6. game モジュール：プレイの進行（実装済み：`game/PlaySession.ts`）
 
 ### 6.1 データの持ち方
 
@@ -331,10 +333,11 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 ### 6.4 一時停止とリトライ
 
 - 一時停止：`AudioEngine.pause()`。音声時刻が止まるので、プレイ側は何もしなくてよい。
-- 再開：`AudioEngine.unpause()` のあと、入力を受け付けるまで 1 秒待つ（初期案）。
+- 一時停止の前に、押しているキーをすべて離したことにする（ロングノーツが押されっぱなしにならないように）。タブが裏に回ったときも一時停止する。
+- 再開：`AudioEngine.unpause()` で、すぐに再開する。再開前のカウントダウン演出は Phase 5 で検討する。
 - リトライ：プレイの状態を作り直し、曲を頭から再生予約する。
 
-## 7. view モジュール：描画（新規）
+## 7. view モジュール：描画（実装済み：`view/PlayfieldView.ts`）
 
 ### 7.1 表示の重なり順（奥から）
 
@@ -360,7 +363,9 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 
 ノーツの描画オブジェクトは、起動時にまとめて作っておき（初期案 256 個）、見えなくなったら戻して再利用する。プレイ中は新しく作らない（NFR-11）。足りなくなったら、その時点で追加で作り、開発中は警告を出す。
 
-## 8. 判定タイミング調整（新規：FR-26）
+## 8. 判定タイミング調整（Phase 4：FR-26）
+
+Phase 2 の時点では、リザルトに「平均のずれ」と「判定オフセットの目安」を表示し、タイトル画面で判定オフセットを手で変えられるようにしている。
 
 1. 0.5 秒間隔のクリック音を 20 回鳴らす。プレイヤーは音に合わせて任意のキーを叩く
 2. 最初の 4 回は慣れるための入力として捨てる
@@ -386,3 +391,15 @@ export function buildPlayableChart(chart: ChartFile): PlayableChart;
 | game       | 押下・離す・見逃しの各流れ、同じレーンの連続ノーツ、ロングノーツの各パターン               |
 | storage    | 版の変換、壊れたデータの退避                                                               |
 | lanes      | キー配置、レーンの種類（実装済み）                                                         |
+| 曲データ   | `public/songs` のすべての曲・譜面が検証に通ること（曲を追加したときの確認を兼ねる）        |
+
+## 11. 開発用の仮の曲（実装済み：`tools/generate-demo-song.mjs`）
+
+自作曲が用意できるまでの開発・テスト用に、仮の曲をプログラムで生成する。
+
+- 曲：BPM 128、4/4 拍子、26 小節（約 50 秒）。ドラム・ベース・アルペジオ・リードを合成した WAV（モノラル、44.1kHz）
+- 譜面：4〜7 レーンそれぞれ。4分 → 8分と同時押し → ロングノーツ → 16分の交互押し、の順に難しくなる
+- 出力先：`public/songs/demo/` と `public/songs/index.json`。Git には含めず、`npm run dev` / `build` / `test` の前に自動で生成する
+- 乱数の種を固定しているので、何度生成しても同じ内容になる
+
+自作曲を追加するときは、曲一覧（4.1）の扱いを Phase 3 で見直す（生成した `index.json` と、手で管理する曲の一覧を分ける）。

@@ -1,30 +1,10 @@
-import { Application, Text } from 'pixi.js';
-import { AudioEngine } from '@/audio/AudioEngine';
-import { isLaneMode, keyLabel, laneKeys, type LaneMode } from '@/config/lanes';
-import { TimingDemoScene } from '@/scenes/TimingDemoScene';
+import { Application } from 'pixi.js';
+import { isLaneMode } from '@/config/lanes';
+import { AudioEngine } from '@/platform/audio/AudioEngine';
+import { loadSettings, normalizeSettings, saveSettings } from '@/platform/storage/settings';
+import type { GameContext, Scene } from '@/scenes/Scene';
+import { TitleScene } from '@/scenes/TitleScene';
 import './style.css';
-
-/** URL の ?lanes=7 などで初期のレーン数を指定できる（テスト・デバッグ用） */
-function initialLaneMode(): LaneMode {
-  const n = Number(new URLSearchParams(location.search).get('lanes'));
-  return isLaneMode(n) ? n : 4;
-}
-
-/** 今の画面とレーン数を DOM に出す（E2E テストで状態を確認するため） */
-function reportState(scene: 'title' | 'play', mode: LaneMode): void {
-  document.body.dataset.scene = scene;
-  document.body.dataset.lanes = String(mode);
-}
-
-function titleMessage(mode: LaneMode): string {
-  const keys = laneKeys(mode).map(keyLabel).join(' ');
-  return [
-    `${mode} レーン（${keys}）`,
-    '',
-    '4〜7 キーでレーン数を切り替え',
-    'Enter キーまたはクリックでスタート',
-  ].join('\n');
-}
 
 async function bootstrap(): Promise<void> {
   const app = new Application();
@@ -37,60 +17,45 @@ async function bootstrap(): Promise<void> {
   });
   document.getElementById('app')?.appendChild(app.canvas);
 
-  let mode = initialLaneMode();
-  const title = new Text({
-    text: titleMessage(mode),
-    style: {
-      fill: 0xf5f7fa,
-      fontSize: 24,
-      align: 'center',
-      fontFamily: 'system-ui, sans-serif',
-      lineHeight: 36,
+  let settings = loadSettings();
+  // URL の ?lanes=7 などで初期のレーン数を指定できる（テスト・デバッグ用）
+  const lanesParam = Number(new URLSearchParams(location.search).get('lanes'));
+  if (isLaneMode(lanesParam)) settings = { ...settings, lastLanes: lanesParam };
+
+  let current: Scene | null = null;
+
+  const ctx: GameContext = {
+    app,
+    engine: new AudioEngine(),
+    get settings() {
+      return settings;
     },
-  });
-  title.anchor.set(0.5);
-  const placeTitle = () => title.position.set(app.screen.width / 2, app.screen.height / 2);
-  placeTitle();
-  app.stage.addChild(title);
-
-  const engine = new AudioEngine();
-  let scene: TimingDemoScene | null = null;
-  let starting = false;
-
-  // 自動再生制限のため、音声はユーザー操作の中で開始する
-  const start = async (): Promise<void> => {
-    if (starting) return;
-    starting = true;
-    await engine.resume();
-    title.destroy();
-    scene = new TimingDemoScene(engine, mode);
-    scene.resize(app.screen.width, app.screen.height);
-    app.stage.addChild(scene);
-    app.ticker.add(() => scene?.update());
-    reportState('play', mode);
+    set settings(value) {
+      settings = value;
+    },
+    updateSettings(patch) {
+      settings = normalizeSettings({ ...settings, ...patch });
+      saveSettings(settings);
+    },
+    show(scene) {
+      if (current) {
+        app.stage.removeChild(current.root);
+        current.destroy();
+      }
+      current = scene;
+      app.stage.addChild(scene.root);
+      scene.resize(app.screen.width, app.screen.height);
+    },
+    // 今の画面とレーン数を DOM に出す（E2E テストで状態を確認するため）
+    report(name, detail = {}) {
+      document.body.dataset.scene = name;
+      for (const [k, v] of Object.entries(detail)) document.body.dataset[k] = v;
+    },
   };
 
-  window.addEventListener('keydown', (e) => {
-    if (starting) return;
-    if (e.code === 'Enter') {
-      void start();
-      return;
-    }
-    const n = Number(e.key);
-    if (isLaneMode(n)) {
-      mode = n;
-      title.text = titleMessage(mode);
-      reportState('title', mode);
-    }
-  });
-  app.canvas.addEventListener('pointerdown', () => void start());
-  app.renderer.on('resize', (w: number, h: number) => {
-    if (scene) scene.resize(w, h);
-    else placeTitle();
-  });
-
-  // 入力の受け付けを始めてから、タイトル画面の準備完了を知らせる
-  reportState('title', mode);
+  app.ticker.add(() => current?.update());
+  app.renderer.on('resize', (w: number, h: number) => current?.resize(w, h));
+  ctx.show(new TitleScene(ctx));
 }
 
 void bootstrap();

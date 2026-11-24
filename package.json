@@ -7,16 +7,20 @@
     "node": ">=24"
   },
   "scripts": {
+    "predev": "npm run songs:demo",
     "dev": "vite",
+    "prebuild": "npm run songs:demo",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "pretest": "npm run songs:demo",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "songs:demo": "node tools/generate-demo-song.mjs"
   },
   "dependencies": {
     "pixi.js": "^8.23.0"

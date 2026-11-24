@@ -86,11 +86,12 @@ src/
   scenes/            画面
   editor/            譜面エディタ（開発用、Phase 3）
 public/songs/        曲データ（音源・譜面・曲情報）
+tools/               開発用のスクリプト（仮の曲の生成など）
 e2e/                 E2E テスト
 docs/                設計書類
 ```
 
-現在の `src/audio/` と `src/scenes/TimingDemoScene.ts` は Phase 1 の動作確認用で、Phase 2 でこの構成に移す。
+Phase 2 時点の画面はタイトル（仮）とプレイ（一時停止・簡易リザルトを含む）だけで、そのほかの画面は Phase 4 で作る。`editor/` は Phase 3 で追加する。
 
 ## 3. 時刻管理の方針（最重要）
 

@@ -13,6 +13,8 @@ export default tseslint.config(
     },
     rules: {
       '@typescript-eslint/consistent-type-imports': 'error',
+      // 画面に出す日本語の文字列では全角スペースを使う
+      'no-irregular-whitespace': ['error', { skipStrings: true, skipTemplates: true }],
     },
   },
   prettier,
