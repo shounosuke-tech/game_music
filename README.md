@@ -2,7 +2,7 @@
 
 ブラウザで動く、縦に落ちてくるノーツ型の音楽ゲームです（PC・キーボード操作）。
 
-- 設計書類：[要件定義書](docs/requirements.md) / [基本設計書](docs/basic-design.md) / [詳細設計書](docs/detailed-design.md) / [ロードマップ](docs/roadmap.md)
+- 設計書類：[00 ロードマップ](docs/00-roadmap.md) / [01 要件定義書](docs/01-requirements.md) / [02 基本設計書](docs/02-basic-design.md) / [03 詳細設計書](docs/03-detailed-design.md)
 - 技術構成：TypeScript / Vite / PixiJS（WebGL）/ Web Audio API / Vitest / Playwright / GitHub Actions
 
 ## 必要なもの
