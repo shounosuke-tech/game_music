@@ -33,6 +33,20 @@ export function judge(
   return 'miss';
 }
 
+/**
+ * ロングノーツの終点の判定（キーを離したとき）。
+ *
+ * @param delta 離した時刻 − 終点の時刻（秒）
+ * @returns 終点以降に離したら perfect。Good の幅より早く離したら miss。その間はずれに応じた判定。
+ */
+export function judgeRelease(
+  delta: number,
+  windows: JudgeWindows = DEFAULT_JUDGE_WINDOWS,
+): Judgment {
+  if (delta >= 0) return 'perfect';
+  return judge(delta, windows) ?? 'miss';
+}
+
 /** 叩かれないまま good の幅を過ぎたノーツは見逃し（miss）になる。 */
 export function isMissedByTime(
   noteTime: number,

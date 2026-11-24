@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_JUDGE_WINDOWS, isMissedByTime, judge } from './judge';
+import { DEFAULT_JUDGE_WINDOWS, isMissedByTime, judge, judgeRelease } from './judge';
 
 describe('judge', () => {
   it.each([
@@ -24,6 +24,20 @@ describe('judge', () => {
     const strict = { perfect: 0.016, great: 0.033, good: 0.05 };
     expect(judge(0.02, strict)).toBe('great');
     expect(judge(0.06, strict)).toBe('miss');
+  });
+});
+
+describe('judgeRelease', () => {
+  it.each([
+    [0, 'perfect'],
+    [0.5, 'perfect'],
+    [-0.02, 'perfect'],
+    [-0.05, 'great'],
+    [-0.09, 'good'],
+    [-0.101, 'miss'],
+    [-1, 'miss'],
+  ] as const)('終点からのずれ %s 秒で離すと %s', (delta, expected) => {
+    expect(judgeRelease(delta)).toBe(expected);
   });
 });
 
